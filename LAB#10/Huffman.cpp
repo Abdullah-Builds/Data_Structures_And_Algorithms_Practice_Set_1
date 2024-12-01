@@ -2,41 +2,31 @@
 #include <string>
 using namespace std;
 
-class TreeNode
+struct Node
 {
-public:
-    char character;
-    int frequency;
-    TreeNode *leftChild;
-    TreeNode *rightChild;
+    char ch;
+    int freq;
+    Node *left;
+    Node *right;
 
-    TreeNode(char c, int f) {
-        character = c;
-        frequency = f;
-        leftChild = nullptr;
-        rightChild = nullptr;
-    }
-
-    TreeNode() {
-        leftChild = nullptr;
-        rightChild = nullptr;
-    }
+    Node(char c, int f) : ch(c), freq(f), left(NULL), right(NULL) {}
 };
 
-class PriorityQueue
+class MinHeap
 {
 public:
-    TreeNode *heap[100];
-    int heapSize;
+    Node *heap[100];
+    int size;
 
-    PriorityQueue() : heapSize(0) {}
+    MinHeap() : size(0) {}
 
-    void shiftUp(int index)
+    void heapifyUp(int index)
     {
         while (index > 0)
         {
             int parent = (index - 1) / 2;
-            if (heap[parent]->frequency > heap[index]->frequency)
+
+            if (heap[parent]->freq > heap[index]->freq)
             {
                 swap(heap[parent], heap[index]);
                 index = parent;
@@ -48,17 +38,17 @@ public:
         }
     }
 
-    void shiftDown(int index)
+    void heapifyDown(int index)
     {
-        while (index < heapSize)
+        while (index < size)
         {
             int smallest = index;
             int leftChild = 2 * index + 1;
             int rightChild = 2 * index + 2;
 
-            if (leftChild < heapSize && heap[leftChild]->frequency < heap[smallest]->frequency)
+            if (leftChild < size && heap[leftChild]->freq < heap[smallest]->freq)
                 smallest = leftChild;
-            if (rightChild < heapSize && heap[rightChild]->frequency < heap[smallest]->frequency)
+            if (rightChild < size && heap[rightChild]->freq < heap[smallest]->freq)
                 smallest = rightChild;
 
             if (smallest != index)
@@ -73,125 +63,85 @@ public:
         }
     }
 
-    void Insertion(TreeNode *node)
+    void insert(Node *node)
     {
-        heap[heapSize] = node;
-        int index = heapSize;
-        heapSize++;
-        shiftUp(index);
+        heap[size] = node;
+        int index = size;
+        size++;
+        heapifyUp(index);
     }
 
-    TreeNode *extractMin()
+    Node *extractMin()
     {
-        if (heapSize == 0)
-            return nullptr;
+        if (size == 0)
+            return NULL;
 
-        TreeNode *minNode = heap[0];
-        swap(heap[0], heap[heapSize - 1]);
-        heapSize--;
-        shiftDown(0);
-
+        Node *minNode = heap[0];
+        swap(heap[0], heap[size - 1]);
+        size--;
+        heapifyDown(0);
+           
         return minNode;
     }
 };
 
-void calculatefrequency(string inputString, char uniqueChars[], int frequency[], int &uniqueCount)
+void calculateFrequencies(string str, char characters[], int freq[], int &n)
 {
     bool visited[256] = {false};
 
-    for (char c : inputString)
+    for (char c : str)
     {
         if (!visited[c])
         {
-            uniqueChars[uniqueCount] = c;
-            frequency[uniqueCount] = 0;
+            characters[n] = c;
+            freq[n] = 0;
 
-            for (char ch : inputString)
+            for (char ch : str)
             {
                 if (ch == c)
-                    frequency[uniqueCount]++;
+                    freq[n]++;
             }
 
             visited[c] = true;
-            uniqueCount++;
+            n++;
         }
     }
 }
 
-string encodeMsg(string inputString, char uniqueChars[], string huffmanCodes[], int uniqueCount)
+Node *buildHuffmanTree(char characters[], int freq[], int n)
 {
-    string encode = "";
+    MinHeap minHeap;
 
-    for (char c : inputString)
+    for (int i = 0; i < n; i++)
     {
-        for (int i = 0; i < uniqueCount; i++)
-        {
-            if (uniqueChars[i] == c)
-            {
-                encode += huffmanCodes[i];
-                break;
-            }
-        }
+        minHeap.insert(new Node(characters[i], freq[i]));
     }
 
-    return encode;
-}
-
-string decodeMessage(string encodedString, TreeNode *root)
-{
-    string decode = "";
-    TreeNode *current = root;
-
-    for (char chh : encodedString)
+    while (minHeap.size > 1)
     {
-        if (chh == '0')
-            current = current->leftChild;
-        else
-            current = current->rightChild;
+        Node *left = minHeap.extractMin();
+        Node *right = minHeap.extractMin();
 
-        if (current->leftChild == nullptr && current->rightChild == nullptr)
-        {
-            decode += current->character;
-            current = root;
-        }
-    }
+        Node *newNode = new Node('$', left->freq + right->freq);
+        newNode->left = left;
+        newNode->right = right;
 
-    return decode;
-}
-TreeNode *Huffman_Build(char uniqueChars[], int frequency[], int uniqueCount)
-{
-    PriorityQueue minHeap;
-
-    for (int i = 0; i < uniqueCount; i++)
-    {
-        minHeap.Insertion(new TreeNode(uniqueChars[i], frequency[i]));
-    }
-
-    while (minHeap.heapSize > 1)
-    {
-        TreeNode *left = minHeap.extractMin();
-        TreeNode *right = minHeap.extractMin();
-
-        TreeNode *newNode = new TreeNode('$', left->frequency + right->frequency);
-        newNode->leftChild = left;
-        newNode->rightChild = right;
-
-        minHeap.Insertion(newNode);
+        minHeap.insert(newNode);
     }
 
     return minHeap.extractMin();
 }
 
-void Generate_Code(TreeNode *root, string code, string huffmanCodes[], char uniqueChars[], int uniqueCount)
+void generateCodes(Node *root, string code, string huffmanCodes[], char characters[], int n)
 {
-    if (root == nullptr)
+    if (root == NULL)
         return;
 
-    if (root->leftChild == nullptr && root->rightChild == nullptr)
+    if (root->left == NULL && root->right == NULL)
     {
-        for (int i = 0; i < uniqueCount; i++)
+        for (int i = 0; i < n; i++)
         {
-            if (uniqueChars[i] == root->character)
+            if (characters[i] == root->ch)
             {
                 huffmanCodes[i] = code;
                 break;
@@ -200,36 +150,77 @@ void Generate_Code(TreeNode *root, string code, string huffmanCodes[], char uniq
         return;
     }
 
-    Generate_Code(root->leftChild, code + "0", huffmanCodes, uniqueChars, uniqueCount);
-    Generate_Code(root->rightChild, code + "1", huffmanCodes, uniqueChars, uniqueCount);
+    generateCodes(root->left, code + "0", huffmanCodes, characters, n);
+    generateCodes(root->right, code + "1", huffmanCodes, characters, n);
 }
 
+string encodeString(string str, char characters[], string huffmanCodes[], int n)
+{
+    string encodedStr = "";
+
+    for (char c : str)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            if (characters[i] == c)
+            {
+                encodedStr += huffmanCodes[i];
+                break;
+            }
+        }
+    }
+
+    return encodedStr;
+}
+
+string decodeString(string encodedStr, Node *root)
+{
+    string decodedStr = "";
+    Node *current = root;
+
+    for (char bit : encodedStr)
+    {
+        if (bit == '0')
+            current = current->left;
+        else
+            current = current->right;
+
+        if (current->left == NULL && current->right == NULL)
+        {
+            decodedStr += current->ch;
+            current = root;
+        }
+    }
+
+    return decodedStr;
+}
 
 int main()
 {
-    string string_ = "sameer_faisal";
+    string input = "Sameer Faisal";
 
-    char uniqueChars[256];
-    int frequency[256];
-    int uniqueCount = 0;
-    calculatefrequency(string_, uniqueChars, frequency, uniqueCount);
+    char characters[256];
+    int freq[256];
+    int n = 0;
+    calculateFrequencies(input, characters, freq, n);
 
-    TreeNode *node = Huffman_Build(uniqueChars, frequency, uniqueCount);
+    Node *root = buildHuffmanTree(characters, freq, n);
 
-    string huffman[256];
-    Generate_Code(node, "", huffman, uniqueChars, uniqueCount);
+    string huffmanCodes[256];
+    generateCodes(root, "", huffmanCodes, characters, n);
 
-    string encodedMessage = encodeMsg(string_, uniqueChars, huffman, uniqueCount);
+    string encodedString = encodeString(input, characters, huffmanCodes, n);
 
-    cout << "Huffman Codes : " << endl;
-    for (int i = 0; i < uniqueCount; i++)
+    cout << "Huffman Codes:\n";
+    for (int i = 0; i < n; i++)
     {
-        cout << uniqueChars[i] << " : " << huffman[i] << endl;
+        cout << characters[i] << ": " << huffmanCodes[i] << "\n";
     }
 
-    cout << endl << "Encoded sameer_fasial: " << encodedMessage << endl;
+    cout << "\nEncoded String: " << encodedString << "\n";
 
-    string decodedstr = decodeMessage(encodedMessage, node);
-    cout << endl << "Decoded sameer_faisal : " << decodedstr << endl;
+    string decodedString = decodeString(encodedString, root);
+    cout << "\nDecoded String: " << decodedString << "\n";
 
+    return 0;
 }
